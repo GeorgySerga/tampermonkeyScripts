@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Sort GoodReads shelf
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.1.1
 // @description  Sort GoodReads shelf
 // @author       Georgy
 // @match        https://www.goodreads.com/shelf/show/*
@@ -41,29 +41,39 @@
       const entries = tiles.map(tile => {
         const text = tile
           .querySelector('div.left span.greyText.smallText:not(.role)')
-          .innerText.trim()
+          .innerText
+          .trim()
         const textArr = text.split(' ').filter(a => a)
+        const rating = Number(textArr[2])
+        const ratings = Number(textArr[4].split(',').join(''))
+        const published = Number(textArr[8])
+
         return {
           tile,
-          rating: Number(textArr[2]),
-          ratings: Number(textArr[4].split(',').join('')),
-          published: Number(textArr[8])
+          rating,
+          ratings,
+          published
         }
       })
 
-      return [...acc, ...entries]
+      return acc.concat(entries)
     }, [])
 
     return filteredEntries.sort((a, b) => b.rating - a.rating)
   }
 
-  function render(entries) {
+  function render(entries, allEntriesQty) {
     const container = document.querySelector(
       'body > div.content > div.mainContentContainer > div.mainContent > div.mainContentFloat > div.leftContainer'
     )
+
     container.innerText = ''
 
     elementsToKeep.forEach(el => container.append(el))
+
+    const entriesCounter = document.createElement('div')
+    entriesCounter.textContent = `Showing ${entries.length} out of ${allEntriesQty} entries`
+    container.append(entriesCounter)
 
     entries.forEach(entry => container.append(entry.tile))
   }
@@ -73,15 +83,21 @@
       console.log('Request data')
       const shelfName = getShelfName()
       const pagesDOM = await Promise.all(getPagePromises(shelfName, pages))
+      console.log('Data received')
+      console.log('Process data')
       const allPages = [document, ...pagesDOM]
       entriesCache = getProcessedEntries(allPages)
+      console.log('Data processed')
     }
 
+    console.log('Filter entries')
     const processedEntries = entriesCache.filter(
-      ({ published: p, ratings: r }) => p >= published && r >= ratings
+      ({ published: p, ratings: r }) => ((!p && !published) || p >= published) && r >= ratings
     )
+    const allEntriesQty = entriesCache.length
 
-    render(processedEntries)
+    console.log('Render')
+    render(processedEntries, allEntriesQty)
   }
 
   let entriesCache = []
@@ -91,14 +107,13 @@
     // Get total number of books and pages available
     const pageIndicator = document
       .querySelectorAll('div.mediumText > span.smallText')[0]
-      .textContent.trim()
-    const numberOfBooks = Number(
-      /\b.{1,5}$/
-        .exec(pageIndicator)[0]
-        .replace(',', '')
-        .trim()
-    )
-    const numberOfPages = Math.ceil(numberOfBooks / 50)
+      .textContent
+      .trim()
+    const pageIndicatorParts = pageIndicator
+      .replace(',', '')
+      .split(' ')
+    const numberOfBooks = Number(pageIndicatorParts[pageIndicatorParts.length - 1])
+    const numberOfPages = Math.min(Math.ceil(numberOfBooks / 50), 50)
 
     // Make breadcrumbs `inline-block` to insert filters right after
     const breadcrumbs = document.getElementsByClassName('breadcrumbs')[0]
