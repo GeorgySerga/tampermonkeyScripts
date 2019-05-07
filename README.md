@@ -6,3 +6,9 @@ Extension homepage: https://tampermonkey.net/
 <center>
   <img alt="Goodreads shelf search screenshot" src="./goodreadsShelfSearchScreenShot.png" width="500">
 </center>
+
+- DuckDuckGo alternative search engines: adds Google and Yandex to one-click search there.
+
+<center>
+  <img alt="Goodreads shelf search screenshot" src="./ddgAlternativeEnginesScreenShot.png" width="500">
+</center>
